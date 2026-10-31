@@ -96,6 +96,39 @@ func TestBuildImageUploadReq(t *testing.T) {
 	}
 }
 
+func TestNextImageUploadReqMaxReqLen(t *testing.T) {
+	data := testImage(3000)
+
+	// The MTU is too small for any image data; a larger request length
+	// (peer reassembles requests split over several packets) must be used
+	// instead of the MTU.
+	s := newProtoSesn(protoVariant{"nmp-tcp", sesn.MGMT_PROTO_NMP, true},
+		20, nil)
+
+	if _, err := nextImageUploadReq(s, false, data, 0, 0, 0); err == nil {
+		t.Errorf("mtu=20: no error")
+	}
+
+	for _, reqLen := range []int{100, 300, 1024} {
+		for _, off := range []int{0, 600} {
+			r, err := nextImageUploadReq(s, false, data, off, 0, reqLen)
+			if err != nil {
+				t.Fatalf("reqLen=%d off=%d: unexpected error: %v", reqLen,
+					off, err)
+			}
+
+			pfx := fmt.Sprintf("reqLen=%d off=%d", reqLen, off)
+			l := encLen(t, s, r.Msg())
+			if l > reqLen {
+				t.Errorf("%s: request len %d > reqLen", pfx, l)
+			}
+			if len(r.Data) < IMAGE_UPLOAD_MAX_CHUNK && l < reqLen-20 {
+				t.Errorf("%s: request len %d; chunk not maximal", pfx, l)
+			}
+		}
+	}
+}
+
 func TestNextImageUploadReqMtuSweep(t *testing.T) {
 	data := testImage(3000)
 	sha := sha256.Sum256(data)
