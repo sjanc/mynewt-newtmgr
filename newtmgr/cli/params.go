@@ -22,6 +22,7 @@ package cli
 import (
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"mynewt.apache.org/newt/util"
@@ -41,6 +42,28 @@ func readMcumgrParams(s sesn.Sesn) (*nmp.McumgrParamsRsp, error) {
 	}
 
 	return res.(*xact.McumgrParamsResult).Rsp, nil
+}
+
+// Reads the request buffer parameters of the device.  Returns nil if the
+// session cannot send requests larger than its MTU or if the device does not
+// report its parameters.
+func sesnMcumgrParams(s sesn.Sesn) *nmp.McumgrParamsRsp {
+	// Only sessions which split a request over several transport packets
+	// can make use of a buffer larger than the MTU.
+	if s.MgmtProto() != sesn.MGMT_PROTO_NMP || !s.CoapIsTcp() {
+		return nil
+	}
+
+	rsp, err := readMcumgrParams(s)
+	if err != nil || rsp.Rc != 0 || int(rsp.BufSize) <= s.MtuOut() {
+		log.Debugf("Not using mcumgr params; rsp=%+v err=%v", rsp, err)
+		return nil
+	}
+
+	log.Debugf("Using mcumgr params; buf_size=%d buf_count=%d",
+		rsp.BufSize, rsp.BufCount)
+
+	return rsp
 }
 
 func paramsRunCmd(cmd *cobra.Command, args []string) {
