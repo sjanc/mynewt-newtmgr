@@ -110,7 +110,7 @@ func TestNextImageUploadReqMtuSweep(t *testing.T) {
 			s := newProtoSesn(pv, mtu, nil)
 
 			for _, off := range []int{0, 1, 600, len(data) - 1} {
-				r, err := nextImageUploadReq(s, false, data, off, 0)
+				r, err := nextImageUploadReq(s, false, data, off, 0, 0)
 				if err != nil {
 					// Too small MTU must be reported, not panic.
 					if mtu > 100 {
@@ -178,7 +178,7 @@ func TestNextImageUploadReqUsesMtu(t *testing.T) {
 	for _, pv := range protoVariants {
 		for mtu := 100; mtu <= 600; mtu++ {
 			s := newProtoSesn(pv, mtu, nil)
-			r, err := nextImageUploadReq(s, false, data, 1000, 0)
+			r, err := nextImageUploadReq(s, false, data, 1000, 0, 0)
 			if err != nil {
 				t.Fatalf("%s mtu=%d: %v", pv.name, mtu, err)
 			}
@@ -206,7 +206,7 @@ func TestNextImageUploadReqSmallMtuDropsSha(t *testing.T) {
 		found := false
 		for mtu := 20; mtu <= 200; mtu++ {
 			s := newProtoSesn(pv, mtu, nil)
-			r, err := nextImageUploadReq(s, false, data, 0, 0)
+			r, err := nextImageUploadReq(s, false, data, 0, 0, 0)
 			if err != nil {
 				continue
 			}
@@ -234,7 +234,7 @@ func TestNextImageUploadReqMtuTooSmall(t *testing.T) {
 			s := newProtoSesn(pv, mtu, nil)
 			for _, off := range []int{0, 500} {
 				if _, err := nextImageUploadReq(s, false, data, off,
-					0); err == nil {
+					0, 0); err == nil {
 
 					t.Errorf("%s mtu=%d off=%d: no error", pv.name, mtu,
 						off)
@@ -251,7 +251,7 @@ func TestNextImageUploadReqFields(t *testing.T) {
 		s := newProtoSesn(pv, 512, nil)
 
 		// Last chunk.
-		r, err := nextImageUploadReq(s, false, data, len(data)-5, 2)
+		r, err := nextImageUploadReq(s, false, data, len(data)-5, 2, 0)
 		if err != nil {
 			t.Fatalf("%s: %v", pv.name, err)
 		}
@@ -267,7 +267,7 @@ func TestNextImageUploadReqFields(t *testing.T) {
 
 		// Upgrade flag is only sent in the first chunk, when requested.
 		for _, upgrade := range []bool{false, true} {
-			r, err = nextImageUploadReq(s, upgrade, data, 0, 3)
+			r, err = nextImageUploadReq(s, upgrade, data, 0, 3, 0)
 			if err != nil {
 				t.Fatalf("%s: %v", pv.name, err)
 			}
@@ -280,7 +280,7 @@ func TestNextImageUploadReqFields(t *testing.T) {
 			}
 		}
 
-		r, err = nextImageUploadReq(s, true, data, 100, 0)
+		r, err = nextImageUploadReq(s, true, data, 100, 0, 0)
 		if err != nil {
 			t.Fatalf("%s: %v", pv.name, err)
 		}
@@ -340,7 +340,7 @@ func TestNextImageUploadReqFreezesFilter(t *testing.T) {
 				s := newProtoSesn(pv, mtu, nil)
 				s.txFilter = f
 
-				r, err := nextImageUploadReq(s, false, data, off, 0)
+				r, err := nextImageUploadReq(s, false, data, off, 0, 0)
 				if err != nil {
 					t.Fatalf("%s mtu=%d: %v", pv.name, mtu, err)
 				}
